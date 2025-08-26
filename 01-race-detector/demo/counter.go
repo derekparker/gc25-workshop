@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"runtime/trace"
 	"sync"
 )
 
@@ -22,6 +25,15 @@ func (inc *incrementor) increment(wg *sync.WaitGroup) {
 }
 
 func main() {
+	f, err := os.Create("counter.trace")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	trace.Start(f)
+	defer trace.Stop()
+
 	var wg sync.WaitGroup
 	inc := &incrementor{}
 
