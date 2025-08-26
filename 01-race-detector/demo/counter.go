@@ -16,11 +16,10 @@ type incrementor struct {
 func (inc *incrementor) increment(wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	inc.mu.Lock()
-	defer inc.mu.Unlock()
-
 	for i := 0; i < 1000; i++ {
+		inc.mu.Lock()
 		inc.counter++
+		inc.mu.Unlock()
 	}
 }
 
