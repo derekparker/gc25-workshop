@@ -24,6 +24,8 @@ func main() {
 	ch := make(chan string, 5)
 
 	ctx := context.Background()
+	ctx, task := trace.NewTask(ctx, "requestAndSend")
+	defer task.End()
 
 	wg.Add(2)
 	go sender(ch, &wg, ctx)
@@ -33,9 +35,6 @@ func main() {
 }
 
 func sender(ch chan string, wg *sync.WaitGroup, ctx context.Context) {
-	ctx, task := trace.NewTask(ctx, "requestAndSend")
-	defer task.End()
-
 	defer wg.Done()
 	for i := range 5 {
 		trace.Log(ctx, "httpbin request", fmt.Sprintf("%d", i))
@@ -60,10 +59,9 @@ func sender(ch chan string, wg *sync.WaitGroup, ctx context.Context) {
 func receiver(ch chan string, wg *sync.WaitGroup, ctx context.Context) {
 	defer wg.Done()
 
-	_, task := trace.NewTask(ctx, "receive task")
-	defer task.End()
-
-	for msg := range ch {
-		fmt.Printf("Received: size %d\n", len(msg))
-	}
+	trace.WithRegion(ctx, "chan read loop", func() {
+		for msg := range ch {
+			fmt.Printf("Received: size %d\n", len(msg))
+		}
+	})
 }
