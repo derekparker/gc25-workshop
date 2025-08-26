@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -22,28 +23,46 @@ func main() {
 	var wg sync.WaitGroup
 	ch := make(chan string, 5)
 
+	ctx := context.Background()
+
 	wg.Add(2)
-	go sender(ch, &wg)
-	go receiver(ch, &wg)
+	go sender(ch, &wg, ctx)
+	go receiver(ch, &wg, ctx)
 
 	wg.Wait()
 }
 
-func sender(ch chan string, wg *sync.WaitGroup) {
+func sender(ch chan string, wg *sync.WaitGroup, ctx context.Context) {
+	ctx, task := trace.NewTask(ctx, "requestAndSend")
+	defer task.End()
+
 	defer wg.Done()
 	for i := range 5 {
-		resp, err := http.Get("https://httpbin.org/delay/0.01")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer resp.Body.Close()
-		ch <- fmt.Sprintf("message %d: %s", i, resp.Body)
+		trace.Log(ctx, "httpbin request", fmt.Sprintf("%d", i))
+
+		var resp *http.Response
+		trace.WithRegion(ctx, "HTTP request", func() {
+			var err error
+			resp, err = http.Get("https://httpbin.org/delay/0.01")
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer resp.Body.Close()
+		})
+
+		trace.WithRegion(ctx, "channel send task", func() {
+			ch <- fmt.Sprintf("message %d: %s", i, resp.Body)
+		})
 	}
 	close(ch)
 }
 
-func receiver(ch chan string, wg *sync.WaitGroup) {
+func receiver(ch chan string, wg *sync.WaitGroup, ctx context.Context) {
 	defer wg.Done()
+
+	_, task := trace.NewTask(ctx, "receive task")
+	defer task.End()
+
 	for msg := range ch {
 		fmt.Printf("Received: size %d\n", len(msg))
 	}
