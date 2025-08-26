@@ -6,20 +6,18 @@ import (
 	"os"
 	"runtime/trace"
 	"sync"
+	"sync/atomic"
 )
 
 type incrementor struct {
-	counter int
-	mu      sync.Mutex
+	counter int64
 }
 
 func (inc *incrementor) increment(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for i := 0; i < 1000; i++ {
-		inc.mu.Lock()
-		inc.counter++
-		inc.mu.Unlock()
+		atomic.AddInt64(&inc.counter, 1)
 	}
 }
 
