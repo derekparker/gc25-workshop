@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"time"
+
+	"runtime/trace"
 )
 
 type APIResult struct {
@@ -14,9 +18,15 @@ type APIResult struct {
 }
 
 func main() {
-	// TODO: Add flight recorder instrumentation here.
-	// Consider using https://pkg.go.dev/golang.org/x/exp/trace#NewFlightRecorder
-	// and outputting the trace if any request takes longer than a threshold.
+	f, err := os.Create("flightrecorder.trace")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fr := trace.NewFlightRecorder(trace.FlightRecorderConfig{})
+	if err := fr.Start(); err != nil {
+		log.Fatal(err)
+	}
+	defer fr.Stop()
 
 	urls := []string{
 		"https://httpbin.org/delay/1",
@@ -33,6 +43,11 @@ func main() {
 			start := time.Now()
 			err := callAPI(url)
 			duration := time.Since(start)
+			if duration > time.Second {
+				if _, err := fr.WriteTo(f); err != nil {
+					log.Fatal(err)
+				}
+			}
 
 			results <- APIResult{
 				URL:      url,
