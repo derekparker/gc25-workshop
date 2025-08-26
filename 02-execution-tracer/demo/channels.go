@@ -20,7 +20,7 @@ func main() {
 	defer trace.Stop()
 
 	var wg sync.WaitGroup
-	ch := make(chan string)
+	ch := make(chan string, 5)
 
 	wg.Add(2)
 	go sender(ch, &wg)
