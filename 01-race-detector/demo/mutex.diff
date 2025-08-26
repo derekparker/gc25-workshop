@@ -1,0 +1,21 @@
+diff --git i/01-race-detector/demo/counter.go w/01-race-detector/demo/counter.go
+index 9b34f88..c33b5bf 100644
+--- i/01-race-detector/demo/counter.go
++++ w/01-race-detector/demo/counter.go
+@@ -7,10 +7,15 @@ import (
+ 
+ type incrementor struct {
+ 	counter int
++	mu      sync.Mutex
+ }
+ 
+ func (inc *incrementor) increment(wg *sync.WaitGroup) {
+ 	defer wg.Done()
++
++	inc.mu.Lock()
++	defer inc.mu.Unlock()
++
+ 	for i := 0; i < 1000; i++ {
+ 		inc.counter++
+ 	}
+  
